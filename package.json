@@ -1,0 +1,39 @@
+{
+  "name": "poke-voice-mcp-server",
+  "version": "1.0.0",
+  "description": "Stateless MCP server for triggering outbound Vapi native voice calls from Poke.",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "bin": {
+    "poke-voice-mcp-server": "dist/src/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/src/index.js",
+    "start:stdio": "MCP_TRANSPORT=stdio node dist/src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.2",
+    "express": "^4.19.2",
+    "zod": "^3.25.76"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "poke",
+    "vapi",
+    "voice-ai",
+    "vercel"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20 <25"
+  }
+}
