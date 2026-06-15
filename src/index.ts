@@ -22,7 +22,14 @@ type RequestConfig = {
   vapiApiKey: string;
   vapiPhoneNumberId: string;
   pokeUserId: string;
+  credentialSources: {
+    vapiApiKey: CredentialSource;
+    vapiPhoneNumberId: CredentialSource;
+    pokeUserId: CredentialSource;
+  };
 };
+
+type CredentialSource = "argument" | "header" | "env" | "missing";
 
 type ToolResponse = {
   ok: boolean;
@@ -62,27 +69,31 @@ function readHeader(headers: IncomingHttpHeaders | undefined, name: string): str
   return value?.trim();
 }
 
-function hasCredentialHeaders(headers: IncomingHttpHeaders | undefined): boolean {
+function hasVapiCredentialHeaders(headers: IncomingHttpHeaders | undefined): boolean {
   return Boolean(
     readHeader(headers, "x-vapi-api-key") ||
-      readHeader(headers, "x-poke-user-id") ||
       readHeader(headers, "x-vapi-phone-number-id")
   );
 }
 
-function readSecret(headers: IncomingHttpHeaders | undefined, headerName: string, envName: string): string | undefined {
+function readSecret(
+  headers: IncomingHttpHeaders | undefined,
+  headerName: string,
+  envName: string
+): { value?: string; source: CredentialSource } {
   const headerValue = readHeader(headers, headerName);
   if (headerValue) {
-    return headerValue;
+    return { value: headerValue, source: "header" };
   }
 
-  // Local development fallback only. If Poke sent credential headers, never mix
-  // in process.env values from the shared host.
-  if (hasCredentialHeaders(headers)) {
-    return undefined;
+  // Local/private deployment fallback only. If Poke sent Vapi credential
+  // headers, never mix in process.env values from the shared host.
+  if (hasVapiCredentialHeaders(headers)) {
+    return { source: "missing" };
   }
 
-  return process.env[envName]?.trim();
+  const envValue = process.env[envName]?.trim();
+  return envValue ? { value: envValue, source: "env" } : { source: "missing" };
 }
 
 function readRequestConfig(
@@ -90,10 +101,20 @@ function readRequestConfig(
   vapiApiKeyArg?: string,
   vapiPhoneNumberIdArg?: string
 ): RequestConfig {
-  const vapiApiKey = vapiApiKeyArg?.trim() || readSecret(headers, "x-vapi-api-key", "VAPI_API_KEY");
-  const vapiPhoneNumberId =
-    vapiPhoneNumberIdArg?.trim() || readSecret(headers, "x-vapi-phone-number-id", "VAPI_PHONE_NUMBER_ID");
-  const pokeUserId = readSecret(headers, "x-poke-user-id", "POKE_USER_ID");
+  const headerOrEnvVapiApiKey = readSecret(headers, "x-vapi-api-key", "VAPI_API_KEY");
+  const headerOrEnvVapiPhoneNumberId = readSecret(headers, "x-vapi-phone-number-id", "VAPI_PHONE_NUMBER_ID");
+  const headerOrEnvPokeUserId = readSecret(headers, "x-poke-user-id", "POKE_USER_ID");
+  const trimmedVapiApiKeyArg = vapiApiKeyArg?.trim();
+  const trimmedVapiPhoneNumberIdArg = vapiPhoneNumberIdArg?.trim();
+
+  const vapiApiKey = trimmedVapiApiKeyArg || headerOrEnvVapiApiKey.value;
+  const vapiPhoneNumberId = trimmedVapiPhoneNumberIdArg || headerOrEnvVapiPhoneNumberId.value;
+  const pokeUserId = headerOrEnvPokeUserId.value;
+  const credentialSources = {
+    vapiApiKey: trimmedVapiApiKeyArg ? "argument" : headerOrEnvVapiApiKey.source,
+    vapiPhoneNumberId: trimmedVapiPhoneNumberIdArg ? "argument" : headerOrEnvVapiPhoneNumberId.source,
+    pokeUserId: headerOrEnvPokeUserId.source
+  } satisfies RequestConfig["credentialSources"];
 
   const missing = [
     !vapiApiKey ? "x-vapi-api-key" : undefined,
@@ -111,7 +132,8 @@ function readRequestConfig(
   return {
     vapiApiKey: vapiApiKey!,
     vapiPhoneNumberId: vapiPhoneNumberId!,
-    pokeUserId: pokeUserId!
+    pokeUserId: pokeUserId!,
+    credentialSources
   };
 }
 
@@ -257,7 +279,8 @@ async function triggerOutboundCall(
     pokeUserId: config.pokeUserId,
     trackingId,
     status: call.status ?? "created",
-    destinationLast4: phoneNumber.slice(-4)
+    destinationLast4: phoneNumber.slice(-4),
+    credentialSources: config.credentialSources
   });
 
   return {
@@ -336,7 +359,8 @@ function createServer(fallbackRequestHeaders?: IncomingHttpHeaders): McpServer {
           action: "trigger_outbound_call_error",
           pokeUserId: readHeader(requestHeaders, "x-poke-user-id") ?? "unknown",
           code: handled.code,
-          destinationLast4: phoneNumber.slice(-4)
+          destinationLast4: phoneNumber.slice(-4),
+          hasVapiCredentialHeaders: hasVapiCredentialHeaders(requestHeaders)
         });
 
         return jsonToolResult(
