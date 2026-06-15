@@ -11,7 +11,7 @@ The server is designed for Poke Recipes: every installer supplies their own Vapi
 - Vapi-native outbound calls through `POST https://api.vapi.ai/call`.
 - Low-cost default model: `openai/gpt-4.1-nano`.
 - Realistic default voice: Vapi `Clara`, version `2`.
-- Dynamic `vapiApiKey` and `vapiPhoneNumberId` tool arguments for Poke environments that do not forward setup prompts as headers.
+- Optional `vapiApiKey` and `vapiPhoneNumberId` tool arguments for Poke environments that do not forward setup prompts as headers.
 - Sanitized structured logs with tracking IDs, user IDs, status, and destination last four digits only.
 - Vercel-ready serverless entrypoint.
 
@@ -48,12 +48,12 @@ Required fields:
 
 - `phoneNumber`: destination number in E.164 format.
 - `systemPrompt`: assistant instructions for the call.
-- `vapiApiKey`: Vapi API key for the installer making the call.
-- `vapiPhoneNumberId`: Vapi phone number ID to use as the outbound caller.
 
-Optional field:
+Optional fields:
 
 - `initialMessage`: first spoken message from the assistant.
+- `vapiApiKey`: Vapi API key for the installer making the call. Falls back to `x-vapi-api-key` or `VAPI_API_KEY`.
+- `vapiPhoneNumberId`: Vapi phone number ID to use as the outbound caller. Falls back to `x-vapi-phone-number-id` or `VAPI_PHONE_NUMBER_ID`.
 
 Successful calls return structured JSON:
 

@@ -48,7 +48,7 @@ The `trigger_outbound_call` schema must include:
 - `vapiApiKey`
 - `vapiPhoneNumberId`
 
-`vapiApiKey` and `vapiPhoneNumberId` are required so Poke can pass them through as tool arguments when setup prompt values are not forwarded as HTTP headers.
+`vapiApiKey` and `vapiPhoneNumberId` should be present in the schema so Poke can pass them through as tool arguments when setup prompt values are not forwarded as HTTP headers. They are optional in the schema so private deployments can fall back to Vercel environment variables.
 
 ## Safe Validation Failure
 

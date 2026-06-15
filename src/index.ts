@@ -300,11 +300,15 @@ function createServer(fallbackRequestHeaders?: IncomingHttpHeaders): McpServer {
         vapiApiKey: z
           .string()
           .min(1)
-          .describe("Vapi API key for this outbound call."),
+          .optional()
+          .describe("Optional Vapi API key for this outbound call. Falls back to x-vapi-api-key or VAPI_API_KEY."),
         vapiPhoneNumberId: z
           .string()
           .min(1)
-          .describe("Vapi phone number ID to use as the outbound caller.")
+          .optional()
+          .describe(
+            "Optional Vapi phone number ID to use as the outbound caller. Falls back to x-vapi-phone-number-id or VAPI_PHONE_NUMBER_ID."
+          )
       },
       annotations: {
         readOnlyHint: false,
