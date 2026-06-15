@@ -2,16 +2,16 @@
 
 A stateless TypeScript Model Context Protocol server that lets Poke trigger outbound AI phone calls through Vapi native telephony.
 
-The server is designed for Poke Recipes: every installer supplies their own Vapi credentials, Poke passes those credentials at call time, and the backend uses them only for the current request. No API keys are hardcoded, stored, logged, or returned.
+This version is designed for a server-managed Vapi setup: the deployed backend owns the Vapi credentials through environment variables, and Poke clients only provide the call target and assistant instructions.
 
 ## Highlights
 
 - Streamable HTTP MCP endpoint for web-hosted agents.
 - One tool: `trigger_outbound_call`.
 - Vapi-native outbound calls through `POST https://api.vapi.ai/call`.
+- Server-side Vapi credentials only; no API keys in the MCP tool schema.
 - Low-cost default model: `openai/gpt-4.1-nano`.
 - Realistic default voice: Vapi `Clara`, version `2`.
-- Optional `vapiApiKey` and `vapiPhoneNumberId` tool arguments for Poke environments that do not forward setup prompts as headers.
 - Sanitized structured logs with tracking IDs, user IDs, status, and destination last four digits only.
 - Vercel-ready serverless entrypoint.
 
@@ -22,11 +22,11 @@ Poke
   -> Streamable HTTP MCP request
   -> /api/mcp on Vercel
   -> MCP tool handler
-  -> Vapi /call
+  -> Vapi /call using server env vars
   -> outbound phone call
 ```
 
-The backend is stateless. Each MCP request contains the credentials and call configuration required to execute that single call.
+The backend is stateless per request, but Vapi credentials are deployment-level configuration.
 
 See [docs/architecture.md](docs/architecture.md) for the security model and request flow.
 
@@ -38,9 +38,7 @@ See [docs/architecture.md](docs/architecture.md) for the security model and requ
 {
   "phoneNumber": "+15551234567",
   "systemPrompt": "You are calling to confirm an appointment. Be concise and polite.",
-  "initialMessage": "Hi, this is the appointment assistant calling to confirm your visit.",
-  "vapiApiKey": "vapi_...",
-  "vapiPhoneNumberId": "..."
+  "initialMessage": "Hi, this is the appointment assistant calling to confirm your visit."
 }
 ```
 
@@ -49,11 +47,9 @@ Required fields:
 - `phoneNumber`: destination number in E.164 format.
 - `systemPrompt`: assistant instructions for the call.
 
-Optional fields:
+Optional field:
 
 - `initialMessage`: first spoken message from the assistant.
-- `vapiApiKey`: Vapi API key for the installer making the call. Falls back to `x-vapi-api-key` or `VAPI_API_KEY`.
-- `vapiPhoneNumberId`: Vapi phone number ID to use as the outbound caller. Falls back to `x-vapi-phone-number-id` or `VAPI_PHONE_NUMBER_ID`.
 
 Successful calls return structured JSON:
 
@@ -75,12 +71,22 @@ Errors return `ok: false` with a stable error code, including:
 - `invalid_call_request`
 - `vapi_request_failed`
 
+## Required Environment Variables
+
+```bash
+VAPI_API_KEY=your_private_server_side_vapi_key
+VAPI_PHONE_NUMBER_ID=your_vapi_phone_number_id
+POKE_USER_ID=local-dev-user
+```
+
+`POKE_USER_ID` is a fallback for local development. In production, Poke can provide `x-poke-user-id`; the server uses it only for sanitized tracking logs.
+
 ## Local Development
 
 Requirements:
 
 - Node.js 20+
-- Vapi API key
+- Private/server-side Vapi API key
 - Vapi phone number ID
 
 Install and build:
@@ -104,19 +110,13 @@ POST http://localhost:3000/api/mcp
 POST http://localhost:3000/api/vapi-webhook
 ```
 
-For local-only testing, the server can fall back to environment variables when no credential headers are present:
+For local testing:
 
 ```bash
 cp .env.example .env
 ```
 
-```bash
-VAPI_API_KEY=your_vapi_api_key
-VAPI_PHONE_NUMBER_ID=your_vapi_phone_number_id
-POKE_USER_ID=local-dev-user
-```
-
-Do not use Vercel environment variables for a shared public Recipe unless you are intentionally running a private instance. Public Recipes should use installer-owned credentials passed by Poke.
+Never commit `.env` or paste Vapi keys into recipe YAML, prompts, screenshots, logs, or chat messages.
 
 ## Vercel Deployment
 
@@ -125,11 +125,18 @@ This repo includes:
 - `api/index.ts`: Vercel serverless adapter.
 - `vercel.json`: rewrites for `/api/mcp`, `/mcp`, `/health`, and the Vapi webhook.
 
+Add production environment variables:
+
+```bash
+npx vercel env add VAPI_API_KEY production
+npx vercel env add VAPI_PHONE_NUMBER_ID production
+npx vercel env add POKE_USER_ID production
+```
+
 Deploy:
 
 ```bash
-vercel
-vercel --prod
+npx vercel --prod --yes
 ```
 
 After deployment, your MCP endpoint is:
@@ -145,11 +152,11 @@ Update `poke.recipe.yaml` with your deployed endpoint before publishing the Reci
 The included [poke.recipe.yaml](poke.recipe.yaml) is a template for Poke Kitchen. It declares:
 
 - Streamable HTTP transport.
-- Setup prompts for a Vapi API key and Vapi phone number ID.
+- No credential setup prompts.
 - A confirmation prompt before `trigger_outbound_call` runs.
 - Billing and compliance warnings.
 
-Poke should also pass `x-poke-user-id` on requests. The server uses that only for sanitized tracking logs.
+Because credentials are server-side, calls bill to the Vapi account configured on the deployment.
 
 ## Testing
 
@@ -161,7 +168,11 @@ At minimum, run:
 npm run build
 ```
 
-Then verify `tools/list` includes `vapiApiKey` and `vapiPhoneNumberId`; Poke will strip unregistered arguments if they are missing from the schema.
+Then verify `tools/list` exposes only call inputs:
+
+- `phoneNumber`
+- `systemPrompt`
+- `initialMessage`
 
 ## Compliance
 

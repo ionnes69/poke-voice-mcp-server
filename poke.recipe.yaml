@@ -1,16 +1,9 @@
 mcpServer:
   endpoint: "https://your-vercel-domain.vercel.app/api/mcp"
   transport: "streamable_http"
-  setupPrompts:
-    - name: "x-vapi-api-key"
-      label: "Vapi API Key"
-      type: "string"
-    - name: "x-vapi-phone-number-id"
-      label: "Vapi Phone Number ID"
-      type: "string"
   confirmations:
     - tool: "trigger_outbound_call"
       confirm: "Make this outbound call?"
   warnings:
-    billing: "Vapi calls incur costs on your Vapi account"
+    billing: "Outbound calls incur costs on the Vapi account configured by the recipe host."
     compliance: "Make sure you comply with outbound call regulations"

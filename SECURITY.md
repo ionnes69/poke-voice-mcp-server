@@ -4,11 +4,11 @@ This project handles credentials that can initiate paid outbound voice calls.
 
 ## Supported Model
 
-Poke Voice is designed for bring-your-own-credentials deployments:
+Poke Voice is designed for server-managed Vapi deployments:
 
-- Installers provide their own Vapi API key.
-- Installers provide their own Vapi phone number ID.
-- Credentials are passed per request and are not stored by the server.
+- The deployed backend reads `VAPI_API_KEY` and `VAPI_PHONE_NUMBER_ID` from environment variables.
+- MCP clients do not provide Vapi credentials in tool arguments.
+- The server does not read Vapi credentials from request headers.
 
 ## Reporting Issues
 

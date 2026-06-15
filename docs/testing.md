@@ -11,6 +11,14 @@ npm run build
 
 ## Run Locally
 
+Configure local environment variables first:
+
+```bash
+cp .env.example .env
+```
+
+Then run:
+
 ```bash
 npm run dev
 ```
@@ -32,6 +40,7 @@ Expected response includes:
 ```bash
 curl -s http://localhost:3000/api/mcp \
   -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
   -d '{
     "jsonrpc": "2.0",
     "id": 1,
@@ -40,15 +49,17 @@ curl -s http://localhost:3000/api/mcp \
   }' | jq
 ```
 
-The `trigger_outbound_call` schema must include:
+The `trigger_outbound_call` schema should expose only call inputs:
 
 - `phoneNumber`
 - `systemPrompt`
 - `initialMessage`
+
+The schema should not expose:
+
 - `vapiApiKey`
 - `vapiPhoneNumberId`
-
-`vapiApiKey` and `vapiPhoneNumberId` should be present in the schema so Poke can pass them through as tool arguments when setup prompt values are not forwarded as HTTP headers. They are optional in the schema so private deployments can fall back to Vercel environment variables.
+- Vapi credential headers
 
 ## Safe Validation Failure
 
@@ -57,6 +68,7 @@ This confirms local validation works without hitting Vapi:
 ```bash
 curl -s http://localhost:3000/api/mcp \
   -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
   -H 'x-poke-user-id: local-test-user' \
   -d '{
     "jsonrpc": "2.0",
@@ -66,9 +78,7 @@ curl -s http://localhost:3000/api/mcp \
       "name": "trigger_outbound_call",
       "arguments": {
         "phoneNumber": "5551234567",
-        "systemPrompt": "Say hello.",
-        "vapiApiKey": "not-a-real-key",
-        "vapiPhoneNumberId": "not-a-real-number-id"
+        "systemPrompt": "Say hello."
       }
     }
   }' | jq
@@ -80,13 +90,14 @@ Expected error code:
 invalid_phone_number
 ```
 
-## Live Auth Failure
+## Missing Configuration Failure
 
-This reaches Vapi with fake credentials but should not place a call:
+Run without `VAPI_API_KEY` or `VAPI_PHONE_NUMBER_ID` to confirm deployment configuration errors are cleanly reported:
 
 ```bash
 curl -s http://localhost:3000/api/mcp \
   -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
   -H 'x-poke-user-id: local-test-user' \
   -d '{
     "jsonrpc": "2.0",
@@ -96,9 +107,7 @@ curl -s http://localhost:3000/api/mcp \
       "name": "trigger_outbound_call",
       "arguments": {
         "phoneNumber": "+15551234567",
-        "systemPrompt": "Say hello.",
-        "vapiApiKey": "not-a-real-key",
-        "vapiPhoneNumberId": "not-a-real-number-id"
+        "systemPrompt": "Say hello."
       }
     }
   }' | jq
@@ -107,7 +116,7 @@ curl -s http://localhost:3000/api/mcp \
 Expected error code:
 
 ```text
-authentication_failed
+missing_configuration
 ```
 
 ## Real Call Test
@@ -115,8 +124,8 @@ authentication_failed
 Only run this after confirming:
 
 - The destination number is yours or you have consent.
-- The Vapi API key is valid.
-- The Vapi phone number ID belongs to that account.
+- `VAPI_API_KEY` is a valid private/server-side key.
+- `VAPI_PHONE_NUMBER_ID` belongs to that Vapi account.
 - Poke or the caller has shown a confirmation prompt.
 
 Use a short prompt and your own phone number for the first test call.
