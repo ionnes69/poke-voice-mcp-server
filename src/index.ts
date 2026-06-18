@@ -6,6 +6,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
+import { handleVapiInbound } from "./vapiInbound.js";
 
 const SERVER_NAME = "poke-vapi-native-voice-mcp";
 const SERVER_VERSION = "1.0.0";
@@ -423,6 +424,8 @@ export function createApp(): express.Express {
     res.json({ ok: true });
   });
 
+  app.post("/api/vapi-inbound", handleVapiInbound);
+
   app.all(["/api/mcp", "/mcp"], (_req, res) => {
     res.status(405).json({
       jsonrpc: "2.0",
@@ -435,6 +438,10 @@ export function createApp(): express.Express {
   });
 
   app.all("/api/vapi-webhook", (_req, res) => {
+    res.status(405).json({ ok: false, error: "Method not allowed." });
+  });
+
+  app.all("/api/vapi-inbound", (_req, res) => {
     res.status(405).json({ ok: false, error: "Method not allowed." });
   });
 

@@ -16,6 +16,16 @@ Poke user action
 
 The server creates a new MCP server and Streamable HTTP transport for each HTTP request. It does not keep MCP session state between requests.
 
+Inbound Vapi calls use a separate Server URL flow:
+
+```text
+Caller dials +13267327987
+  -> Vapi receives inbound call
+  -> POST /api/vapi-inbound with message.type = "assistant-request"
+  -> server returns transient assistant config
+  -> caller speaks with the assistant
+```
+
 ## Runtime Configuration
 
 Client-provided tool arguments:
@@ -31,6 +41,11 @@ Deployment-level environment variables:
 - `POKE_USER_ID`
 
 Production requests may also include `x-poke-user-id` for sanitized tracking. The server does not read Vapi API keys or Vapi phone number IDs from client headers or tool arguments.
+
+Inbound assistant text can be customized with:
+
+- `VAPI_INBOUND_FIRST_MESSAGE`
+- `VAPI_INBOUND_SYSTEM_PROMPT`
 
 ## Vapi Payload
 

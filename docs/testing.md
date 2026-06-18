@@ -129,3 +129,54 @@ Only run this after confirming:
 - Poke or the caller has shown a confirmation prompt.
 
 Use a short prompt and your own phone number for the first test call.
+
+## Inbound Assistant Request
+
+This simulates the Vapi `assistant-request` event without placing a call:
+
+```bash
+curl -s http://localhost:3000/api/vapi-inbound \
+  -H 'content-type: application/json' \
+  -d '{
+    "message": {
+      "type": "assistant-request",
+      "call": {
+        "id": "local-call-id",
+        "phoneNumberId": "6aa3552e-1802-46f5-ba58-1a8f1d66b62d",
+        "customer": {
+          "number": "+17208105438"
+        }
+      },
+      "phoneNumber": {
+        "id": "6aa3552e-1802-46f5-ba58-1a8f1d66b62d",
+        "number": "+13267327987"
+      }
+    }
+  }' | jq
+```
+
+Expected response shape:
+
+```json
+{
+  "assistant": {
+    "name": "Poke Voice Inbound",
+    "firstMessage": "Hi, this is Poke Voice. How can I help?",
+    "model": {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    "voice": {
+      "provider": "vapi",
+      "voiceId": "Clara",
+      "version": 2
+    }
+  }
+}
+```
+
+Configure the production Server URL in the Vapi dashboard:
+
+```text
+https://poke-voice-rho.vercel.app/api/vapi-inbound
+```

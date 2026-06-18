@@ -108,6 +108,7 @@ Local endpoints:
 GET  http://localhost:3000/health
 POST http://localhost:3000/api/mcp
 POST http://localhost:3000/api/vapi-webhook
+POST http://localhost:3000/api/vapi-inbound
 ```
 
 For local testing:
@@ -123,7 +124,8 @@ Never commit `.env` or paste Vapi keys into recipe YAML, prompts, screenshots, l
 This repo includes:
 
 - `api/index.ts`: Vercel serverless adapter.
-- `vercel.json`: rewrites for `/api/mcp`, `/mcp`, `/health`, and the Vapi webhook.
+- `api/vapi-inbound.ts`: Vapi inbound assistant-request handler.
+- `vercel.json`: rewrites for `/api/mcp`, `/mcp`, `/health`, the Vapi webhook, and inbound call handler.
 
 Add production environment variables:
 
@@ -131,6 +133,8 @@ Add production environment variables:
 npx vercel env add VAPI_API_KEY production
 npx vercel env add VAPI_PHONE_NUMBER_ID production
 npx vercel env add POKE_USER_ID production
+npx vercel env add VAPI_INBOUND_SYSTEM_PROMPT production
+npx vercel env add VAPI_INBOUND_FIRST_MESSAGE production
 ```
 
 Deploy:
@@ -146,6 +150,56 @@ https://your-vercel-domain.vercel.app/api/mcp
 ```
 
 Update `poke.recipe.yaml` with your deployed endpoint before publishing the Recipe.
+
+## Inbound Vapi Calls
+
+Inbound calls are handled by:
+
+```text
+https://your-vercel-domain.vercel.app/api/vapi-inbound
+```
+
+For the current production deployment:
+
+```text
+https://poke-voice-rho.vercel.app/api/vapi-inbound
+```
+
+Configure this URL as the Vapi phone number Server URL for:
+
+```text
++13267327987
+6aa3552e-1802-46f5-ba58-1a8f1d66b62d
+```
+
+When Vapi sends an `assistant-request`, the route returns a transient assistant using:
+
+- `openai/gpt-4.1-nano`
+- Vapi voice `Clara`, version `2`
+- `VAPI_INBOUND_SYSTEM_PROMPT` if configured
+- `VAPI_INBOUND_FIRST_MESSAGE` if configured
+
+Manual assistant fallback JSON:
+
+```json
+{
+  "firstMessage": "Hi, this is Poke Voice. How can I help?",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4.1-nano",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a concise, friendly inbound voice assistant for Poke Voice. Answer naturally, ask one question at a time, and help the caller with their request. If you do not know something, say so plainly."
+      }
+    ]
+  },
+  "voice": {
+    "provider": "vapi",
+    "voiceId": "Clara",
+    "version": 2
+  }
+}
 
 ## Poke Recipe
 

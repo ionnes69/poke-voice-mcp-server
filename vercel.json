@@ -27,6 +27,10 @@
     {
       "source": "/api/vapi-webhook",
       "destination": "/api/index"
+    },
+    {
+      "source": "/api/vapi-inbound",
+      "destination": "/api/index"
     }
   ]
 }
